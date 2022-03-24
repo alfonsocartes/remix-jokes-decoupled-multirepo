@@ -6,7 +6,9 @@ This project is a sample but complete implementation of a Node Backend deployed 
 - Auth Server (JWT with Access and Refresh tokens)
 - Redis Server (for refresh tokens blacklist)
 - Authenticated routes.
+- Prisma
 - PostgreSQL DB
+- Elastic Beanstalk + RDS deployment (boring and proven)
 
 ## Deployment steps
 
@@ -39,10 +41,10 @@ Compilation step to compile the app from Typescript to Javascript to run it in N
 
 #### Allow external connections on inbound rules of the security group of the RDS database\*\*
 
-In order to connect to the RDS database from localhost we need to allow external connections the inbound rules of the security group for postgres:
+To connect to the RDS database from localhost we need to allow external connections in the inbound rules of the security group for postgres:
 In the RDS console: Databases > Database > Security group ID > Edit inbound rules > Delete the current Security group rule and add another one: Type: PostgreSQL, Source Anywhere
 
-Also, the database needs to be publicly acccessible:
+Also, the database needs to be publicly accessible:
 
 To change the Publicly Accessible property of the Amazon RDS instance to Yes:
 
@@ -62,7 +64,7 @@ To change the Publicly Accessible property of the Amazon RDS instance to Yes:
 
 #### How to migrate and seed the database
 
-From localhost we can migrate the database with Prisma after setting up the RDS url as the DATABASE variable on the .env file.
+From localhost we can migrate the database with Prisma after setting up the RDS URL as the DATABASE variable on the .env file.
 
 Ideally, migrate deploy should be part of an automated CI/CD pipeline, and we do not generally recommend running this command locally to deploy changes to a production database (for example, by temporarily changing the DATABASE_URL environment variable). It is not generally considered good practice to store the production database URL locally.
 
@@ -75,11 +77,11 @@ Remember to set up the variables in the .env file in Elastic Beanstalk
 
 ### CI/CD
 
-There are actions set up for GitHub wokers to deploy both to a staging environment and to a production environment once the are pushes (and merged pull requests) to the "staging" branch or to the "master" (production) branch.
+There are actions already set up for GitHub workers to deploy both to a staging environment and a production environment every time we push (and merge pull requests) to the "staging" branch or the "master" (production) branch.
 
 Path: .github/workflows/[staging | production].yml
 
-The process has tree steps:
+The process has three steps:
 
 - Checking step: check linting and check typescript
 - Build step: build the app and deploys the prisma migration
