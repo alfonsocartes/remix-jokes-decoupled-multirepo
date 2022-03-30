@@ -1,8 +1,8 @@
 node_modules
-.DS_Store
-.env
-/.cache
+
 /build
 /public/build
+.env
 /backup
+
 /app/styles/tailwind-output.css

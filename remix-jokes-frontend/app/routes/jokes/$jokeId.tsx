@@ -1,10 +1,12 @@
 import { LoaderFunction, ActionFunction, MetaFunction, json } from "remix";
 import { useLoaderData, useCatch, useParams } from "remix";
 import { JokeDisplay } from "~/components/joke";
-import type { Joke } from "@prisma/client";
-import { getUser } from "~/api-utils/user";
-import { deleteJoke, getJoke } from "~/api-utils/jokes";
-import { refreshAccessTokenSession } from "~/utils/session.server";
+import { getUser } from "~/models/user.server";
+import { deleteJoke, getJoke } from "~/models/jokes.server";
+import { Joke } from "~/prisma";
+import authenticated from "~/auth/authenticated.server";
+
+type LoaderData = { joke: Joke; isOwner: boolean };
 
 export const meta: MetaFunction = ({
   data,
@@ -23,14 +25,7 @@ export const meta: MetaFunction = ({
   };
 };
 
-type LoaderData = { joke: Joke; isOwner: boolean };
-
 export const loader: LoaderFunction = async ({ request, params }) => {
-  const cookie = await refreshAccessTokenSession(request);
-  if (cookie) request.headers.set("Cookie", cookie);
-  let data = null;
-
-  /* -- actual loader data fetching */
   const { jokeId } = params;
   if (!jokeId) {
     throw new Response("What a joke! Not found.", {
@@ -38,24 +33,31 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     });
   }
 
-  const joke = await getJoke(request, jokeId);
+  const joke = await getJoke(jokeId);
   if (!joke) {
     throw new Response("What a joke! Not found.", {
       status: 404,
     });
   }
 
-  const user = await getUser(request);
-  let userId = user?.id;
-  const isOwner = userId === joke.jokesterId;
-
-  data = {
-    joke,
-    isOwner: isOwner,
+  const success = async () => {
+    const user = await getUser(request);
+    let userId = user?.id;
+    const isOwner = userId === joke.jokesterId;
+    return json<LoaderData>({
+      joke,
+      isOwner: isOwner,
+    });
   };
-  /* actual loader data fetching --*/
 
-  return json(data, cookie ? { headers: { "Set-Cookie": cookie } } : undefined);
+  const failure = () => {
+    return json<LoaderData>({
+      joke,
+      isOwner: false,
+    });
+  };
+
+  return authenticated(request, success, failure);
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -68,7 +70,15 @@ export const action: ActionFunction = async ({ request, params }) => {
       });
     }
 
-    return deleteJoke(request, jokeId);
+    const success = async () => {
+      return deleteJoke(request, jokeId);
+    };
+
+    const failure = () => {
+      throw new Response("Not authorized.", { status: 401 });
+    };
+
+    return authenticated(request, success, failure);
   }
 };
 

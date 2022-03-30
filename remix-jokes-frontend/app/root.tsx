@@ -1,12 +1,14 @@
 import { LinksFunction, MetaFunction } from "remix";
 import { Links, LiveReload, Outlet, useCatch, Meta, Scripts } from "remix";
 
+import tailwindStylesheetUrl from "./styles/tailwind-output.css";
 import globalStylesUrl from "./styles/global.css";
 import globalMediumStylesUrl from "./styles/global-medium.css";
 import globalLargeStylesUrl from "./styles/global-large.css";
 
 export const links: LinksFunction = () => {
   return [
+    { rel: "stylesheet", href: tailwindStylesheetUrl },
     {
       rel: "stylesheet",
       href: globalStylesUrl,

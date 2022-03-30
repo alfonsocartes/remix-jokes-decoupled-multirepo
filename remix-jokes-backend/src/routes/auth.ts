@@ -2,9 +2,13 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import express, { NextFunction, Request, Response } from "express";
-import { db } from "../../db.server";
+import { db } from "../db.server";
 import type { User } from "@prisma/client";
-import redisClient from "../../redis_client";
+import redisClient from "../redis_client";
+
+const ACCESS_TOKEN_EXPIRATION_TIME = "90m";
+const REFRESH_TOKEN_EXPIRATION_TIME = "1y";
+const ISSUER = "[APPNAME, DOMAIN, ...]";
 
 declare module "jsonwebtoken" {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -42,17 +46,20 @@ async function authenticateUser(
     if (!username || !password) {
       return res
         .status(422)
-        .send({ message: "Username and password must be provided" });
+        .json({ message: "Username and password must be provided" });
     }
 
-    const user: User | null = await db.user.findUnique({
+    const user = await db.user.findUnique({
       where: { username },
+      include: {
+        password: true,
+      },
     });
 
-    if (user) {
+    if (user && user.password) {
       const isCorrectPassword = await bcrypt.compare(
         password,
-        user.passwordHash
+        user.password.hash
       );
       if (isCorrectPassword) {
         req.user = user;
@@ -71,8 +78,8 @@ async function authenticateUser(
 function generateAccessToken(userId: string) {
   const payload = { userId };
   const options = {
-    expiresIn: "30m",
-    issuer: "[APPNAME, DOMAIN, ...]",
+    expiresIn: ACCESS_TOKEN_EXPIRATION_TIME,
+    issuer: ISSUER,
     audience: userId,
   };
 
@@ -85,8 +92,8 @@ function generateAccessToken(userId: string) {
 function generateRefreshToken(userId: string) {
   const payload = { userId };
   const options = {
-    expiresIn: "1y",
-    issuer: "[APPNAME, DOMAIN, ...]",
+    expiresIn: REFRESH_TOKEN_EXPIRATION_TIME,
+    issuer: ISSUER,
     audience: userId,
   };
   if (!refreshTokenSecret) {
@@ -120,41 +127,54 @@ router.post("/login", authenticateUser, async (req: Request, res: Response) => {
 });
 
 router.post("/register", async (req: Request, res: Response) => {
-  console.log("registering", req.body);
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
       return res
         .status(422)
-        .send({ message: "Username and password must be provided" });
+        .json({ message: "Username and password must be provided" });
     }
 
-    console.log("checking is user exists....");
     const userExists = await db.user.findFirst({
       where: { username },
     });
 
-    console.log("user exists: ", userExists);
-
     if (userExists) {
-      return res.status(422).send({ message: "User already exists" });
+      return res.status(422).json({ message: "User already exists" });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    console.log("passwordHash", passwordHash);
     const user: User = await db.user.create({
-      data: { username, passwordHash },
+      data: {
+        username,
+        password: {
+          create: {
+            hash: passwordHash,
+          },
+        },
+      },
     });
 
-    console.log("user created", user);
-
     if (user?.id) {
-      return res.status(200).json({ user });
+      const userId = user.id;
+      try {
+        const accessToken = generateAccessToken(user.id);
+        const refreshToken = generateRefreshToken(userId);
+        if (accessToken && refreshToken) {
+          res
+            .status(200)
+            .json({ accessToken: accessToken, refreshToken: refreshToken });
+        } else {
+          res.status(500).json({ message: "Error: could not generate tokens" });
+        }
+      } catch (error) {
+        res.status(500).json({ message: "Authorization token not found." });
+      }
     } else {
       return res
         .status(422)
-        .send({ message: "Error creating user in the database" });
+        .json({ message: "Error creating user in the database" });
     }
   } catch (error) {
     console.error(error);
@@ -164,7 +184,6 @@ router.post("/register", async (req: Request, res: Response) => {
 
 // Route to create a new access token if the user has a valid refresh token
 router.post("/token", async (req: Request, res: Response) => {
-  // TODO: Shouldn't we get the refresh token from the cookie sent by the client?
   const refreshToken = req.body.refreshToken;
 
   if (refreshToken === null) return res.sendStatus(401);

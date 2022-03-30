@@ -1,21 +1,31 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+
 const prisma = new PrismaClient();
 
 async function seed() {
+  const hashedPassword = await bcrypt.hash("twixrox", 10);
   const kody = await prisma.user.create({
     data: {
       username: "kody",
       // this is a hashed version of "twixrox"
-      passwordHash:
-        "$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lSsvqNu/1u",
+      password: {
+        create: {
+          hash: hashedPassword,
+          // hash: "$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lSsvqNu/1u",
+        },
+      },
     },
   });
+
   await Promise.all(
     getJokes().map((joke) => {
       const data = { jokesterId: kody.id, ...joke };
       return prisma.joke.create({ data });
     })
   );
+
+  console.log(`Database has been seeded. 🌱`);
 }
 
 seed();

@@ -8,10 +8,10 @@ import {
   useLoaderData,
 } from "remix";
 import stylesUrl from "../styles/jokes.css";
-import type { User } from "@prisma/client";
-import { getUser } from "~/api-utils/user";
-import { getAllJokes } from "~/api-utils/jokes";
-import { refreshAccessTokenSession } from "~/utils/session.server";
+import { getUser } from "~/models/user.server";
+import { getAllJokes } from "~/models/jokes.server";
+import { Joke, User } from "~/prisma";
+import authenticated from "~/auth/authenticated.server";
 
 export const links: LinksFunction = () => {
   return [
@@ -24,25 +24,29 @@ export const links: LinksFunction = () => {
 
 type LoaderData = {
   user: User | null;
-  jokeListItems: Array<{ id: string; name: string }>;
+  jokeListItems: Joke[] | null;
 };
 
 export const loader: LoaderFunction = async ({ request }) => {
-  const cookie = await refreshAccessTokenSession(request);
-  if (cookie) request.headers.set("Cookie", cookie);
-  let data = null;
+  const jokeListItems = await getAllJokes();
 
-  /* -- actual loader data fetching */
-  const jokeListItems = await getAllJokes(request);
-  const user = await getUser(request);
+  const success = async () => {
+    const user = await getUser(request);
 
-  data = {
-    jokeListItems,
-    user,
+    return json<LoaderData>({
+      user,
+      jokeListItems,
+    });
   };
-  /* actual loader data fetching --*/
 
-  return json(data, cookie ? { headers: { "Set-Cookie": cookie } } : undefined);
+  const failure = () => {
+    return json<LoaderData>({
+      user: null,
+      jokeListItems,
+    });
+  };
+
+  return authenticated(request, success, failure);
 };
 
 export default function JokesRoute() {
@@ -78,15 +82,17 @@ export default function JokesRoute() {
           <div className="jokes-list">
             <Link to=".">Get a random joke</Link>
             <p>Here are a few more jokes to check out:</p>
-            <ul>
-              {data.jokeListItems.map((joke) => (
-                <li key={joke.id}>
-                  <Link prefetch="intent" to={joke.id}>
-                    {joke.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {data.jokeListItems && (
+              <ul>
+                {data.jokeListItems.map((joke) => (
+                  <li key={joke.id}>
+                    <Link prefetch="intent" to={joke.id}>
+                      {joke.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
             <Link to="new" className="button">
               Add your own
             </Link>

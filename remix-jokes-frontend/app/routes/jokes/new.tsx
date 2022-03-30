@@ -8,7 +8,7 @@ import {
   Form,
   useTransition,
 } from "remix";
-import { createJoke } from "~/api-utils/jokes";
+import { createJoke } from "~/models/jokes.server";
 import { JokeDisplay } from "~/components/joke";
 
 function validateJokeContent(content: string) {

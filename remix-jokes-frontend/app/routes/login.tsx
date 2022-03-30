@@ -1,6 +1,6 @@
 import { ActionFunction, Form, LinksFunction, MetaFunction } from "remix";
 import { useActionData, json, useSearchParams, Link } from "remix";
-import { createAuthSession, login, register } from "~/utils/session.server";
+import { createAuthSession, login, register } from "~/auth/session.server";
 import stylesUrl from "../styles/login.css";
 
 export const links: LinksFunction = () => {
@@ -80,15 +80,16 @@ export const action: ActionFunction = async ({ request }) => {
     }
 
     case "register": {
-      const data = await register({ username, password });
-      if (!data) {
+      const { data, error } = await register({ username, password });
+      if (data) {
+        const { accessToken, refreshToken } = data;
+        return createAuthSession(accessToken, refreshToken, redirectTo);
+      } else {
         return badRequest({
           fields,
-          formError: `Username/Password combination is incorrect`,
+          formError: error || `Username/Password combination is incorrect`,
         });
       }
-      const { accessToken, refreshToken } = data;
-      return createAuthSession(accessToken, refreshToken, redirectTo);
     }
     default: {
       return badRequest({

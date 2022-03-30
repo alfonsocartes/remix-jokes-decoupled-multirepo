@@ -1,6 +1,6 @@
 import express from "express";
-import { db } from "../../db.server";
-import { authorizationRequired } from "../auth";
+import { db } from "../db.server";
+import { authorizationRequired } from "./auth";
 
 const router = express.Router();
 

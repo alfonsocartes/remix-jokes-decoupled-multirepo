@@ -1,10 +1,7 @@
-import { Joke } from "@prisma/client";
 import { redirect } from "remix";
-import {
-  getAccessToken,
-  logout,
-  refreshAccessToken,
-} from "~/utils/session.server";
+import { getAccessToken } from "~/auth/jwt.server";
+import { logout } from "~/auth/session.server";
+import { Joke } from "~/prisma";
 
 export interface CreateJokeInputData {
   name: string;
@@ -33,41 +30,39 @@ export async function createJoke(
       body: JSON.stringify(data),
     });
 
-    // token is not valid get a new access token using the refresh token
-    if (response.status === 401) {
-      // This can throw an error:
-      await refreshAccessToken(request);
-      return createJoke(request, data); // make the request again with refreshed access token in the cookie
-    }
-
     const { joke } = await response.json();
     return joke;
-  } catch (error) {
+  } catch {
     throw logout(request);
   }
 }
 
-export async function getAllJokes(request: Request): Promise<Joke[]> {
+export async function getAllJokes(): Promise<Joke[]> {
   try {
     const response = await fetch(`${process.env.API_URL}/jokes`);
     const { jokeListItems } = await response.json();
     return jokeListItems;
-  } catch (error) {
-    console.error("getAllJokes error", error);
+  } catch {
     return [];
   }
 }
 
-export async function getJoke(
-  request: Request,
-  jokeId: string
-): Promise<Joke | null> {
+export async function getRandomJoke(): Promise<Joke | null> {
+  try {
+    const response = await fetch(`${process.env.API_URL}/jokes/random`);
+    const { randomJoke } = await response.json();
+    return randomJoke;
+  } catch {
+    return null;
+  }
+}
+
+export async function getJoke(jokeId: string): Promise<Joke | null> {
   try {
     const response = await fetch(`${process.env.API_URL}/jokes/${jokeId}`);
     const { joke } = await response.json();
     return joke;
-  } catch (error) {
-    console.error("getJoke error", error);
+  } catch {
     return null;
   }
 }
