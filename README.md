@@ -37,3 +37,5 @@ We have a Remix app that connects to the backend. We can [deploy it to different
 ## How to continue
 
 Please go to each folder and read the README.
+
+### This is not a monorepo.
