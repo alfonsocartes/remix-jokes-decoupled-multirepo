@@ -22,8 +22,7 @@
     "format:check": "prettier --config .prettierrc --check \"src/**/*.{ts,css,html}\"",
     "format:fix": "prettier --write .",
     "clean": "rm -rf node_modules && rm -rf dist",
-    "typecheck": "tsc -b",
-    "prepare": "husky install"
+    "typecheck": "tsc -b"
   },
   "jest": {
     "preset": "scripts/jest/node"
@@ -56,7 +55,6 @@
     "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.0.0",
-    "husky": "^7.0.4",
     "jsonwebtoken": "^8.5.1",
     "lint-staged": "^12.3.7",
     "nodemon": "^2.0.15",
