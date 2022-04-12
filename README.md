@@ -1,4 +1,4 @@
-# Remix Jokes Full-Stack Decoupled
+# Remix Jokes Full-Stack Decoupled Multirepo
 
 
 This project came up to be because of an excellent tutorial made by the [Remix team](https://remix.run/) called [Jokes](https://remix.run/docs/en/v1/tutorials/jokes). 
@@ -39,3 +39,5 @@ We have a Remix app that connects to the backend. We can [deploy it to different
 Please go to each folder and read the README.
 
 ### This is not a monorepo.
+
+Because this is not a monorepo, we cannot generate the types for Prisma in the common root node_modules folder that includes @prisma/client. The current solution is to use the remix-jokes-frontend/app/prisma.d.ts file that contains a copy of the generated types but we hace to do this manually. There are multiple solutions for this that include things such as: npm package, git submodule, symlinks, and many more, but we opted for the monorepo solution. You can find it in: [Monorepo Project](https://github.com/alfonsocartes/remix-jokes-decoupled-monorepo)
